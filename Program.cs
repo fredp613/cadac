@@ -50,28 +50,58 @@ namespace CADAC
 
                 try
                 {
+
+
+
                     Entity fundingApplication = _service.Retrieve("ca_fundingapplication", entity.GetAttributeValue<EntityReference>("objectid").Id, new ColumnSet(true));
                     string documentBody = entity.GetAttributeValue<string>("documentbody");
                     byte[] fileContent = Convert.FromBase64String(documentBody);
-                    for (var i = 0; i < ReadCSV(fileContent.ToString()).Rows.Count; i++)
-                    {
+                    var dt = ConvertCSVtoDataTable(fileContent.ToString());
 
-                        var row = ReadCSV(fileContent.ToString()).Rows[i];
+                    foreach (DataRow drow in dt.Rows)
+                    {
+                        string value = drow[1].ToString();
+                        Console.WriteLine(value);
                         Entity FundingApplicationLineItem = new Entity("ca_fundingapplicationlineitem");
-                        FundingApplicationLineItem["amount"] = row["amount"];
+                        FundingApplicationLineItem["ca_name"] = value;
+                        FundingApplicationLineItem["ca_amount"] = Double.Parse(value);
                         _service.Create(FundingApplicationLineItem);
-                        
                     }
                 }
-
                 catch (WebException exception)
                 {
-
                     throw new InvalidPluginExecutionException("An error has occurred, {0}" + exception.Message);
                 }
 
             }
 
+        }
+
+        public static DataTable ConvertCSVtoDataTable(string strFilePath)
+        {
+            DataTable dt = new DataTable();
+            using (StreamReader sr = new StreamReader(strFilePath))
+            {
+                string[] headers = sr.ReadLine().Split(',');
+                foreach (string header in headers)
+                {
+                    dt.Columns.Add(header);
+                }
+                while (!sr.EndOfStream)
+                {
+                    string[] rows = sr.ReadLine().Split(',');
+                    DataRow dr = dt.NewRow();
+                    for (int i = 0; i < headers.Length; i++)
+                    {
+                        dr[i] = rows[i];
+                    }
+                    dt.Rows.Add(dr);
+                }
+
+            }
+
+
+            return dt;
         }
         public static DataTable ReadCSV(String filename)
         {
